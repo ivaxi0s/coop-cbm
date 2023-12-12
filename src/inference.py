@@ -15,7 +15,7 @@ from src.dataset import load_data
 from src.config import BASE_DIR, N_CLASSES
 from analysis import AverageMeter, multiclass_metric, accuracy, binary_accuracy
 from src.data_sel import *
-from src.loss import OrthogonalProjectionLoss
+from src.col import ConceptOrthogonalLoss
 
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
