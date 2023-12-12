@@ -1,0 +1,8 @@
+CMDs/*
+*.pth
+*out
+*.txt
+*cpython*
+*.sh
+sett*
+debug*
