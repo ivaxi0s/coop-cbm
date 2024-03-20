@@ -8,7 +8,7 @@ import numpy as np
 import torchvision.transforms as transforms
 
 from PIL import Image
-from src.config import BASE_DIR, N_ATTRIBUTES
+from util.config import BASE_DIR, N_ATTRIBUTES
 from torch.utils.data import BatchSampler
 from torch.utils.data import Dataset, DataLoader
 

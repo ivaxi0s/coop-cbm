@@ -1,5 +1,5 @@
 
-from src.template_model import MLP, inception_v3, End2EndModel, End2EndModelCoop
+from src.model.template_model import MLP, inception_v3, End2EndModel, End2EndModelCoop
 import torchvision, pdb
 
 

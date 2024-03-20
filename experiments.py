@@ -7,7 +7,8 @@ if not os.path.isdir('CMDs'):
 with open('CMDs/experiments.cmd', 'a') as f:
     f.write(' '.join(sys.argv)+'\n')
 
-def run_experiments(args):
+def run_experiments(dataset, args):
+
     from src.train import (
         train_X_to_C,
         train_oracle_C_to_y_and_test_on_Chat,
@@ -40,7 +41,7 @@ def run_experiments(args):
     elif experiment == 'StandardWithAuxC':
         train_X_to_y_with_aux_C(*args)
 
-    elif experiment == 'Coop':
+    elif experiment == 'Multitask':
         train_X_to_Cy(*args)
 
     elif experiment == 'Probe':
@@ -56,29 +57,28 @@ def run_experiments(args):
         hyperparameter_optimization(*args)
 
 def parse_arguments():
-    # First arg must be dataset, and based on which dataset it is, we will parse arguments accordingly
     assert len(sys.argv) > 2, 'You need to specify dataset and experiment'
-    assert sys.argv[1] in ['Concept_XtoC', 'Independent_CtoY', 'Sequential_CtoY',
-                           'Standard', 'StandardWithAuxC', 'Coop', 'Joint', 'Probe',
+    assert sys.argv[1].upper() in ['OAI', 'CUB'], 'Please specify the dataset'
+    assert sys.argv[2] in ['Concept_XtoC', 'Independent_CtoY', 'Sequential_CtoY',
+                           'Standard', 'StandardWithAuxC', 'Multitask', 'Joint', 'Probe',
                            'TTI', 'Robustness', 'HyperparameterSearch'], \
         'Please specify valid experiment. Current: %s' % sys.argv[2]
-    experiment = sys.argv[1].upper()
+    dataset = sys.argv[1].upper()
+    experiment = sys.argv[2].upper()
 
     # Handle accordingly to dataset
-    from src.train import parse_arguments
+    if dataset == 'OAI':
+        from OAI.train import parse_arguments
+    elif dataset == 'CUB':
+        from src.util.utils import parse_arguments
 
     args = parse_arguments(experiment=experiment)
-    return  args
+    return dataset, args
 
 if __name__ == '__main__':
 
     import torch
     import numpy as np
 
-    args = parse_arguments()
-
-    # Seeds
-    np.random.seed(args[0].seed)
-    torch.manual_seed(args[0].seed)
-
-    run_experiments(args)
+    dataset, args = parse_arguments()
+    run_experiments(dataset, args)

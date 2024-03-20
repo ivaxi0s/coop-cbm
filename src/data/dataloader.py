@@ -1,44 +1,26 @@
 import os
-import csv
-import random
-import tarfile
-import multiprocessing as mp
 
-import tqdm
-import requests
-
-import cv2
 import numpy as np
 import pandas as pd
 from numpy import genfromtxt
-import sklearn.model_selection as skms
 
 import torch
-import torch.utils.data as td
-import torch.nn.functional as F
 import torchvision as tv
 import torchvision.transforms.functional as TF
 
 from PIL import Image
-import torch.optim as optim
 from torchvision import datasets
-import torchvision.datasets.utils as dataset_utils
-import pdb
 from torchvision.utils import save_image
 
-DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
 OUT_DIR = 'results'
-RANDOM_SEED = 0
-torch.manual_seed(0)
 
 
 # create an output folder
 os.makedirs(OUT_DIR, exist_ok=True)
 
 class OODBird(datasets.VisionDataset):
-  def __init__(self, root='./data', env='train', transform=None, target_transform=None):
+  def __init__(self, args, root='./data', env='train', transform=None, target_transform=None):
     super(OODBird, self).__init__(root, transform=transform, target_transform=target_transform)
-    np.random.seed(seed=10)
     self.envs = env
     self.prepare_ood_bird()
     self.data_label_tuples = torch.load(os.path.join(self.root, self.envs) + '.pt')
@@ -64,9 +46,9 @@ class OODBird(datasets.VisionDataset):
       return
     
     print('Preparing OOD Bird')
-    train_bird = datasets.ImageFolder("/home/ivsh/scratch/projects/xai-concepts/ood_bird/CUB_ood/train")
-    test_in_bird = datasets.ImageFolder("/home/ivsh/scratch/projects/xai-concepts/ood_bird/CUB_ood/test_in")
-    test_out_bird = datasets.ImageFolder("/home/ivsh/scratch/projects/xai-concepts/ood_bird/CUB_ood/test_out")
+    train_bird = datasets.ImageFolder(args.root + "/train")
+    test_in_bird = datasets.ImageFolder(args.root + "/test_in")
+    test_out_bird = datasets.ImageFolder(args.root + "/test_out")
     train_set = []
     in_test_set = []
     out_test_set = []
@@ -112,9 +94,6 @@ class OODBird(datasets.VisionDataset):
     torch.save(in_test_set, os.path.join(self.root, 'in_test.pt'))
     torch.save(out_test_set, os.path.join(self.root, 'out_test.pt'))
 
-
-
-
 class DDI(datasets.VisionDataset):
   def __init__(self, root, transform=None):
     self.root = root
@@ -141,11 +120,6 @@ class DDI(datasets.VisionDataset):
         X = X[:3,:,:]
     return X,y
 
-
-
-
-
-
 class DatasetBirds(tv.datasets.ImageFolder):
     """
     Wrapper for the CUB-200-2011 dataset. 
@@ -160,7 +134,6 @@ class DatasetBirds(tv.datasets.ImageFolder):
                  is_valid_file=None,
                  train=True,
                  bboxes=False):
-        # root = "/lustre04/scratch/ivsh/datasets/CUB/CUB_200_2011"
         img_root = os.path.join(root, 'images')
 
         super(DatasetBirds, self).__init__(
@@ -175,11 +148,8 @@ class DatasetBirds(tv.datasets.ImageFolder):
         self.target_transform_ = target_transform
         self.train = train
         self.args = args
-        # pdb.set_trace()
-        # obtain sample ids filtered by split
         path_to_splits = os.path.join(root, 'train_test_split.txt')
         indices_to_use = list()
-        # pdb.set_trace()
         with open(path_to_splits, 'r') as in_file:
             for line in in_file:
                 idx, use_train = line.strip('\n').split(' ', 2)
@@ -203,12 +173,9 @@ class DatasetBirds(tv.datasets.ImageFolder):
 
         self.imgs = self.samples = imgs_to_use
         self.targets = targets_to_use
-        # pdb.set_trace()
-        # self.attributes = attr
         global C_A
         C_A = np.zeros((200,312))
         class_attributes_file = os.path.join(root, 'attributes/class_attribute_labels_continuous.txt') 
-        # class_attributes_file = os.path.join(root, 'attributes_medical.txt')
         class_attr_rf = open(class_attributes_file,'r')
         i = 0
         for line in class_attr_rf.readlines():
@@ -216,7 +183,6 @@ class DatasetBirds(tv.datasets.ImageFolder):
             for j in range(len(strs)):
                 strs[j] = float(strs[j])
                 C_A[i][j] = 0.0 if strs[j] < 50.0 else 1.0
-                # C_A[i][j] = strs[j]
             i+=1
         class_attr_rf.close()
         # pdb.set_trace()
@@ -244,7 +210,6 @@ class DatasetBirds(tv.datasets.ImageFolder):
         sample, target = super(DatasetBirds, self).__getitem__(index)
 
         if self.bboxes is not None:
-            # squeeze coordinates of the bounding box to range [0, 1]
             width, height = sample.width, sample.height
             x, y, w, h = self.bboxes[index]
 
@@ -263,22 +228,18 @@ class DatasetBirds(tv.datasets.ImageFolder):
         if self.target_transform_ is not None:
             target = self.target_transform_(target)
         attribute = C_A[target]
-        # attribute = C_A[index]
-        # pdb.set_trace()
-        # pdb.set_trace()
         if self.args.corruption_name:
           sample = np.array(sample)
           sample = sample.transpose(1, 2, 0)
-          # pil_image = Image.fromarray(sample)
           sample = (sample* 255).astype(np.uint8)
-          # pdb.set_trace()
           sample = corrupt(sample, corruption_name=self.args.corruption_name, severity=1)
           pil_image = Image.fromarray(sample)
           pil_image.save("output_image.png")  
           sample = sample.transpose(2, 0, 1)
           sample = torch.from_numpy(sample)
         return sample, target, attribute
-# pad images to 500 pixels
+
+
 def pad(img, fill=0, size_max=500):
     """
     Pads images to the specified size (height x width). 
@@ -295,10 +256,6 @@ def pad(img, fill=0, size_max=500):
     return TF.pad(img, (pad_left, pad_top, pad_right, pad_bottom), fill=fill)
 
 class TIL(tv.datasets.ImageFolder):
-    """
-    Wrapper for the CUB-200-2011 dataset. 
-    Method DatasetBirds.__getitem__() returns tuple of image and its corresponding label.    
-    """
     def __init__(self,
                  root,
                  args,
@@ -308,7 +265,6 @@ class TIL(tv.datasets.ImageFolder):
                  is_valid_file=None,
                  train=True,
                  bboxes=False):
-        # root = "/lustre04/scratch/ivsh/datasets/CUB/CUB_200_2011"
         img_root = os.path.join(root, 'images')
 
         super(TIL, self).__init__(
@@ -342,7 +298,6 @@ class TIL(tv.datasets.ImageFolder):
                 idx, fn = line.strip('\n').split(' ', 2)
                 if int(idx) in indices_to_use:
                     filenames_to_use.add(fn)
-        # pdb.set_trace()
         img_paths_cut = {'/'.join(img_path.rsplit('/', 2)[-2:]): idx for idx, (img_path, lb) in enumerate(self.imgs)}
         imgs_to_use = [self.imgs[img_paths_cut[fn]] for fn in filenames_to_use]
 
@@ -350,11 +305,8 @@ class TIL(tv.datasets.ImageFolder):
 
         self.imgs  = self.samples = imgs_to_use
         self.targets = targets_to_use
-        # pdb.set_trace()
-        # self.attributes = attr
         global C_A
         C_A = np.zeros((4520,185))
-        # class_attributes_file = os.path.join(root, 'attributes/class_attribute_labels_continuous.txt') 
         class_attributes_file = os.path.join(root, 'attributes_medical.txt')
         class_attr_rf = open(class_attributes_file,'r')
         i = 0
@@ -362,11 +314,9 @@ class TIL(tv.datasets.ImageFolder):
             strs = line.strip().split(' ')
             for j in range(len(strs)):
                 strs[j] = float(strs[j])
-                # C_A[i][j] = 0.0 if strs[j] < 50.0 else 1.0
                 C_A[i][j] = strs[j]
             i+=1
         class_attr_rf.close()
-        # pdb.set_trace()
         if args.repeat_concepts:
           concepts_repeated = int(args.rep*args.n_attributes)
           intm_con = C_A[:,:concepts_repeated]
@@ -409,16 +359,10 @@ class TIL(tv.datasets.ImageFolder):
             sample = self.transform_(sample)
         if self.target_transform_ is not None:
             target = self.target_transform_(target)
-        # attribute = C_A[target]
         attribute = C_A[index]
-        # pdb.set_trace()
-        return sample, target, attribute
+        return sample, target
 
 class DatasetAnimals(tv.datasets.ImageFolder):
-    """
-    Wrapper for the CUB-200-2011 dataset. 
-    Method DatasetBirds.__getitem__() returns tuple of image and its corresponding label.    
-    """
     def __init__(self,
                  root,
                  transform=None,
@@ -427,7 +371,6 @@ class DatasetAnimals(tv.datasets.ImageFolder):
                  is_valid_file=None,
                  train=True,
                  bboxes=False):
-        # root = "/lustre04/scratch/ivsh/datasets/CUB/CUB_200_2011"
         img_root = os.path.join(root, 'images')
 
         super(DatasetAnimals, self).__init__(
@@ -441,7 +384,6 @@ class DatasetAnimals(tv.datasets.ImageFolder):
         self.transform_ = transform
         self.target_transform_ = target_transform
         self.train = train
-        # pdb.set_trace()
         # obtain sample ids filtered by split
         path_to_splits = os.path.join(root, 'train_test_split.txt')
         indices_to_use = list()
@@ -468,12 +410,9 @@ class DatasetAnimals(tv.datasets.ImageFolder):
 
         self.imgs = self.samples = imgs_to_use
         self.targets = targets_to_use
-        # pdb.set_trace()
-        # self.attributes = attr
         global C_A
         C_A = np.zeros((200,312))
         class_attributes_file = os.path.join(root, 'predicate-matrix-binary.txt') 
-        # class_attributes_file = os.path.join(root, 'attributes_medical.txt')
         class_attr_rf = open(class_attributes_file,'r')
         i = 0
         for line in class_attr_rf.readlines():
@@ -541,7 +480,6 @@ class Nec(tv.datasets.ImageFolder):
                  is_valid_file=None,
                  train=True,
                  bboxes=False):
-        # root = "/lustre04/scratch/ivsh/datasets/CUB/CUB_200_2011"
         img_root = os.path.join(root, 'images')
 
         super(Nec, self).__init__(
@@ -582,21 +520,10 @@ class Nec(tv.datasets.ImageFolder):
         imgs_to_use = [self.imgs[img_paths_cut[fn]] for fn in filenames_to_use]
 
         _, targets_to_use = list(zip(*imgs_to_use))
-
-        # nec_analysis=np.genfromtxt(os.path.join(root,'nec.txt'), names=True, dtype=None, encoding=None)
-        # label =np.ones(len(imgs_to_use),)
-        # for i in range(len(nec_analysis)):
-        #     if nec_analysis[i][2]
-
-
-
         self.imgs = self.samples = imgs_to_use
         self.targets = targets_to_use
-        # pdb.set_trace()
-        # self.attributes = attr
         global C_A
         C_A = np.zeros((4520,183))
-        # class_attributes_file = os.path.join(root, 'attributes/class_attribute_labels_continuous.txt') 
         class_attributes_file = os.path.join(root, 'meta.txt')
         class_attr_rf = open(class_attributes_file,'r')
         i = 0
@@ -604,14 +531,11 @@ class Nec(tv.datasets.ImageFolder):
             strs = line.strip().split(' ')
             for j in range(len(strs)):
                 strs[j] = float(strs[j])
-                # C_A[i][j] = 0.0 if strs[j] < 50.0 else 1.0
                 C_A[i][j] = strs[j]
             i+=1
         class_attr_rf.close()
-        # pdb.set_trace()
         global nec
         nec = np.zeros((4520,185))
-        # class_attributes_file = os.path.join(root, 'attributes/class_attribute_labels_continuous.txt') 
         class_attributes_file = os.path.join(root, 'attributes_medical.txt')
         class_attr_rf = open(class_attributes_file,'r')
         i = 0
@@ -661,11 +585,8 @@ class Nec(tv.datasets.ImageFolder):
             sample = self.transform_(sample)
         if self.target_transform_ is not None:
             target = self.target_transform_(target)
-        # attribute = C_A[target]
-        # pdb.set_trace()
         nec_target = nec[index][96]
         attribute = C_A[index]
-        # pdb.set_trace()
         return sample, nec_target, attribute
 
 def color_grayscale_arr(arr, red=True):
@@ -697,7 +618,7 @@ class ColoredMNIST(datasets.VisionDataset):
   def __init__(self, root='./data', env='train', transform=None, target_transform=None):
     super(ColoredMNIST, self).__init__(root, transform=transform,
                                 target_transform=target_transform)
-    np.random.seed(seed=10)
+    
     self.envs = env
     self.prepare_colored_mnist()
     if env in ['train', 'out_test', 'in_test']:
@@ -793,7 +714,7 @@ class CelebA(datasets.VisionDataset):
   def __init__(self, root='./data', env='train', transform=None, target_transform=None):
     super(CelebA, self).__init__(root, transform=transform, target_transform=target_transform)
     # pdb.set_trace()
-    np.random.seed(seed=10)
+    
     self.envs = env
     self.prepare_celeba()
     self.data_label_tuples = torch.load(os.path.join(self.root, 'img_align_celeba', env) + '.pt')

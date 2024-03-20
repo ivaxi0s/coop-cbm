@@ -2,7 +2,7 @@ from PIL import Image
 import os, pdb
 import json
 import numpy as np
-import random
+from util.utils import set_seed
 from collections import defaultdict
 
 N_CLASSES = 200
@@ -194,8 +194,7 @@ if __name__ == '__main__':
     parser.add_argument('--seed', type=int, default=42, help='Random seed')
 
     args = parser.parse_args()
-
-    np.random.seed(args.seed)
+    set_seed(args.seed)
     # Get species
     img_dir = os.path.join(args.cub_dir, 'images')
     seg_dir = os.path.join(args.cub_dir, 'segmentations')

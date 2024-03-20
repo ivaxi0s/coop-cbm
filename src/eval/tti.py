@@ -8,9 +8,9 @@ import random
 from scipy.stats import entropy
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
-from src.inference import *
-from src.config import N_CLASSES, N_ATTRIBUTES
-from src.utils import get_class_attribute_names
+from util.inference import *
+from util.config import N_CLASSES, N_ATTRIBUTES
+from util.utils import get_class_attribute_names
 import pdb
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 

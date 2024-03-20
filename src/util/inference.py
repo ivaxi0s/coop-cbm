@@ -11,15 +11,15 @@ from sklearn.metrics import f1_score
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 import sklearn.model_selection as skms
 import torch.utils.data as td
-from src.dataset import load_data
-from src.config import BASE_DIR, N_CLASSES
+from data.old_dataset import load_data
+from util.config import BASE_DIR, N_CLASSES
 from analysis import AverageMeter, multiclass_metric, accuracy, binary_accuracy
-from src.data_sel import *
+from data.data_sel import *
 from src.col import ConceptOrthogonalLoss
 
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
-from src.dataloader import DatasetBirds, pad
+from data.dataloader import DatasetBirds, pad
 import torchvision as tv
 
 if not os.path.isdir('CMDs'):

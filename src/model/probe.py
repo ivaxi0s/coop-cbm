@@ -12,10 +12,10 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from sklearn.metrics import f1_score
 from torch.utils.data import Dataset, DataLoader
 
-from src.models import MLP
-from src.dataset import find_class_imbalance
+from model.models import MLP
+from data.old_dataset import find_class_imbalance
 from analysis import AverageMeter, Logger, binary_accuracy
-from src.config import BASE_DIR, N_CLASSES, N_ATTRIBUTES, UPWEIGHT_RATIO, MIN_LR, LR_DECAY_SIZE
+from util.config import BASE_DIR, N_CLASSES, N_ATTRIBUTES, UPWEIGHT_RATIO, MIN_LR, LR_DECAY_SIZE
 
 
 class LinearProbeDataset(Dataset):
