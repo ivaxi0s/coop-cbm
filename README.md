@@ -14,6 +14,7 @@ bottlenecks may result in ineffective predictions that could prevent the use of 
 
 
 **Coop-CBM + Concept Orthogonal Loss**
+
 In this work, we propose cooperative-CBM (coop-CBM) model aimed at addressing the performance
 gap between CBMs and standard black-box models. Coop-CBM uses an auxiliary loss that facilitates
 the learning of a rich and expressive concept representation for downstream task. To obtain orthogonal
