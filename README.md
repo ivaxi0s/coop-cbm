@@ -22,8 +22,8 @@ be applied during training for any concept-based model to improve their concept 
 We perform an extensive evaluation of the generalisation capabilities of CBMs on three
 different distribution shifts.
 
-<img src="imgs/coop.png" alt="Coop-CBM" width="300">
-<img src="imgs/col.png" alt="COL" width="300">
+<img src="src/imgs/coop.png" alt="Coop-CBM" width="300">
+<img src="src/imgs/col.png" alt="COL" width="300">
 
 
 
